@@ -2,7 +2,7 @@
 
 #include <iosfwd>
 #include <string>
-#include <vector>
+#include "vector.h"
 
 struct big_integer {
   big_integer();
@@ -68,7 +68,7 @@ struct big_integer {
   void mul_short(const uint32_t& rhs);
 
 private:
-  std::vector<uint32_t> number;
+  vector number;
   const size_t length() const;
   void push_back(uint32_t value);
   void pop_back();
