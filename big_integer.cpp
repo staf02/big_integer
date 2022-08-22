@@ -585,17 +585,17 @@ void big_integer::delete_zeros() {
 }
 
 void big_integer::push_back(uint32_t value) {
-  this->number.push_back(value);
+  number.push_back(value);
 }
 
 void big_integer::pop_back() {
-  this->number.pop_back();
+  number.pop_back();
 }
 
 void big_integer::resize(size_t new_size) {
-  this->number.resize(new_size);
+  number.resize(new_size);
 }
 
 const size_t big_integer::length() const {
-  return this->number.size();
+  return number.size();
 }
