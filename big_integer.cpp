@@ -11,15 +11,14 @@ big_integer::big_integer() : sign(false), number() {}
 
 big_integer::big_integer(big_integer const& other) = default;
 
-big_integer::big_integer(int16_t a) : big_integer((int64_t)a) {}
+big_integer::big_integer(int16_t a) : big_integer((long long)a) {}
 
-big_integer::big_integer(int a) : big_integer((int64_t)a) {}
+big_integer::big_integer(int a) : big_integer((long long)a) {}
 
-big_integer::big_integer(long a) : big_integer((int64_t)a) {}
+big_integer::big_integer(long a) : big_integer((long long)a) {}
 
-big_integer::big_integer(int64_t a) : sign(a < 0) {
+big_integer::big_integer(long long a) : sign(a < 0), number() {
     if (a == 0) {
-        number = vector();
         return;
     }
     bool to_add = false;
@@ -39,16 +38,15 @@ big_integer::big_integer(int64_t a) : sign(a < 0) {
 }
 
 //unsigned constructors
-big_integer::big_integer(uint16_t a) : big_integer((uint64_t)a) {}
+big_integer::big_integer(uint16_t a) : big_integer((unsigned long long)a) {}
 
-big_integer::big_integer(uint32_t a) : big_integer((uint64_t)a) {}
+big_integer::big_integer(uint32_t a) : big_integer((unsigned long long)a) {}
 
-big_integer::big_integer(unsigned long a) : big_integer((uint64_t)a) {}
+big_integer::big_integer(unsigned long a) : big_integer((unsigned long long)a) {}
 
-big_integer::big_integer(uint64_t a) {
+big_integer::big_integer(unsigned long long a) : number() {
     sign = false;
     if (a == 0) {
-        number = vector();
         return;
     }
     (*this).push_back((a & UINT32_MAX));
@@ -57,8 +55,7 @@ big_integer::big_integer(uint64_t a) {
 }
 
 //string constructor
-big_integer::big_integer(std::string const& str) {
-    number = vector(), sign = false;
+big_integer::big_integer(std::string const& str) : number(), sign(false) {
     if (str == "" || str == "-") {
         throw std::invalid_argument("invalid argument");
     }
@@ -101,7 +98,21 @@ big_integer::~big_integer() = default;
 
 //sum & subtract
 
-void big_integer::add_short(uint32_t const& rhs) {
+//some helpful functions
+
+bool absolute_less(const big_integer& a, const big_integer& b) {
+    if (a.length() != b.length()) {
+        return a.length() < b.length();
+    }
+    for (size_t i = a.length(); i != 0; i--) {
+        if (a[i - 1] != b[i - 1]) {
+            return a[i - 1] < b[i - 1];
+        }
+    }
+    return false;
+}
+
+void big_integer::absolute_add_short(uint32_t const& rhs) {
     if (length() == 0) {
         number.push_back(rhs);
         return;
@@ -117,48 +128,6 @@ void big_integer::add_short(uint32_t const& rhs) {
     }
 }
 
-void big_integer::mul_short(uint32_t const& rhs) {
-    if (*this == 0 || rhs == 0) {
-        *this = 0;
-        return;
-    }
-    uint64_t carry = 0;
-    for (size_t i = 0; i < length(); i++) {
-        uint64_t tmp = static_cast<uint64_t>(number[i]) * rhs + carry;
-        number[i] = tmp & UINT32_MAX;
-        carry = tmp >> 32;
-    }
-    if (carry > 0)
-        number.push_back(carry);
-}
-
-void big_integer::sub_short(uint32_t const& rhs) {
-    if ((*this) <= 0) {
-        add_short(rhs);
-        return;
-    }
-    uint32_t carry = 0;
-    for (size_t i = 0; i < length(); i++) {
-        auto tmp = static_cast<int64_t>(number[i]) - carry - (i == 0 ? rhs : 0);
-        number[i] = tmp < 0 ? UINT32_MAX + tmp + 1 : tmp;
-        carry = tmp < 0 ? 1 : 0;
-    }
-    delete_zeros();
-}
-//some helpful functions
-
-bool absolute_less(const big_integer& a, const big_integer& b) {
-    if (a.length() != b.length()) {
-        return a.length() < b.length();
-    }
-    for (size_t i = a.length(); i != 0; i--) {
-        if (a[i - 1] != b[i - 1]) {
-            return a[i - 1] < b[i - 1];
-        }
-    }
-    return false;
-}
-
 void big_integer::absolute_increase(big_integer const& rhs) {
     uint64_t carry = 0;
     resize(rhs.length());
@@ -170,6 +139,16 @@ void big_integer::absolute_increase(big_integer const& rhs) {
     if (carry > 0) {
         number.push_back(carry);
     }
+}
+
+void big_integer::absolute_sub_short(uint32_t const& rhs) {
+    uint32_t carry = 0;
+    for (size_t i = 0; i < length(); i++) {
+        auto tmp = static_cast<int64_t>(number[i]) - carry - (i == 0 ? rhs : 0);
+        number[i] = tmp < 0 ? UINT32_MAX + tmp + 1 : tmp;
+        carry = tmp < 0 ? 1 : 0;
+    }
+    delete_zeros();
 }
 
 void big_integer::absolute_decrease(big_integer const& rhs, bool t) {
@@ -194,6 +173,19 @@ void big_integer::absolute_decrease(big_integer const& rhs, bool t) {
     }
 }
 
+void big_integer::add_short(uint32_t const& rhs) {
+    bool rhs_sign = false;
+    if (sign == rhs_sign) {
+        absolute_add_short(rhs);
+    }
+    else {
+        if (number.size() == 1 && number[0] < rhs) {
+            sign = false;
+        }
+        absolute_sub_short(rhs);
+    }
+}
+
 big_integer& big_integer::operator+=(big_integer const& rhs) {
     if (sign == rhs.sign) {
         absolute_increase(rhs);
@@ -208,6 +200,24 @@ big_integer& big_integer::operator+=(big_integer const& rhs) {
             sign ^= true;
     }
     return (*this);
+}
+
+void big_integer::sub_short(uint32_t const& rhs) {
+    if (number.size() == 0) {
+        number.push_back(rhs);
+        sign = true;
+        return;
+    }
+    bool rhs_sign = false;
+    if (sign == rhs_sign) {
+        if (number.size() == 1 && number[0] < rhs) {
+            sign = true;
+        }
+        absolute_sub_short(rhs);
+    }
+    else {
+        absolute_add_short(rhs);
+    }
 }
 
 big_integer& big_integer::operator-=(big_integer const& rhs) {
@@ -228,6 +238,21 @@ big_integer operator+(big_integer a, big_integer const& b) {
 
 big_integer operator-(big_integer a, big_integer const& b) {
     return a -= b;
+}
+
+void big_integer::mul_short(uint32_t const& rhs) {
+    if (*this == 0 || rhs == 0) {
+        *this = 0;
+        return;
+    }
+    uint64_t carry = 0;
+    for (size_t i = 0; i < length(); i++) {
+        uint64_t tmp = static_cast<uint64_t>(number[i]) * rhs + carry;
+        number[i] = tmp & UINT32_MAX;
+        carry = tmp >> 32;
+    }
+    if (carry > 0)
+        number.push_back(carry);
 }
 
 //multiply
@@ -439,12 +464,12 @@ big_integer operator<<(big_integer a, int b) {
     }
     a *= (static_cast<uint32_t>(1) << (b % 32));
     size_t tmp = b / 32;
-    a.number.reverse();
+    std::reverse(a.number.begin(), a.number.end());
     while (tmp) {
         a.push_back(0);
         tmp--;
     }
-    a.number.reverse();
+    std::reverse(a.number.begin(), a.number.end());
     a.delete_zeros();
     return a;
 }
@@ -484,24 +509,24 @@ big_integer big_integer::operator~() const {
 }
 
 big_integer& big_integer::operator++() {
-    (*this) += 1;
+    add_short(1);
     return *this;
 }
 
 big_integer big_integer::operator++(int) {
     big_integer tmp = *this;
-    (*this) += 1;
+    add_short(1);
     return tmp;
 }
 
 big_integer& big_integer::operator--() {
-    (*this) -= 1;
+    sub_short(1);
     return *this;
 }
 
 big_integer big_integer::operator--(int) {
     big_integer tmp = *this;
-    (*this) -= 1;
+    sub_short(1);
     return tmp;
 }
 
@@ -568,7 +593,6 @@ void big_integer::delete_zeros() {
     while (number.size() > 0 && number.back() == 0)
         number.pop_back();
     if (number.size() == 0) {
-        number = vector();
         sign = false;
     }
 }
@@ -582,7 +606,9 @@ void big_integer::pop_back() {
 }
 
 void big_integer::resize(size_t new_size) {
-    number.resize(new_size);
+    while (number.size() < new_size) {
+        number.push_back(0);
+    }
 }
 
 const size_t big_integer::length() const {

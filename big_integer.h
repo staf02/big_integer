@@ -2,8 +2,9 @@
 
 #include <iosfwd>
 #include <string>
-#include "vector.h"
 #include <functional>
+#include <vector>
+#include <algorithm>
 
 struct big_integer {
     big_integer();
@@ -13,8 +14,8 @@ struct big_integer {
     big_integer(uint32_t a);
     big_integer(int16_t a);
     big_integer(uint16_t a);
-    big_integer(int64_t a);
-    big_integer(uint64_t a);
+    big_integer(long long a);
+    big_integer(unsigned long long a);
     big_integer(unsigned long a);
     big_integer(long a);
     ~big_integer();
@@ -67,7 +68,7 @@ struct big_integer {
     friend std::string to_string(big_integer const& a);
 
 private:
-    vector number;
+    std::vector<uint32_t> number;
 
     const size_t length() const;
     void push_back(uint32_t value);
@@ -99,8 +100,12 @@ private:
     friend bool absolute_less(const big_integer& a, const big_integer& b);
 
     void add_short(const uint32_t& rhs);
-    void mul_short(const uint32_t& rhs);
     void sub_short(const uint32_t& rhs);
+    void mul_short(const uint32_t& rhs);
+
+    void absolute_add_short(const uint32_t& rhs);
+    void absolute_sub_short(const uint32_t& rhs);
+
 };
 
 big_integer operator+(big_integer a, big_integer const& b);
